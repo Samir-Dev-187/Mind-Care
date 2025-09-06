@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { Button } from './components/ui/button';
-import { Card } from './components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Globe, Heart, Brain, Calendar, BookOpen, MessageCircle, BarChart3, AlertTriangle, Users, LogIn, User } from 'lucide-react';
 
 // Import all screen components
@@ -18,13 +16,42 @@ import CrisisScreen from './components/CrisisScreen';
 import PeerSupportScreen from './components/PeerSupportScreen';
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState('login');
+  // State management for the application
+  const [currentScreen, setCurrentScreen] = useState('login'); // Start with the login screen
   const [assessmentResults, setAssessmentResults] = useState(null);
   const [language, setLanguage] = useState('en');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [consentGiven, setConsentGiven] = useState(false);
 
-  const screens = {
-    login: <LoginScreen 
+  // Function to handle the assessment completion and determine the next step based on risk level
+  const handleAssessmentComplete = (results: any) => {
+    setAssessmentResults(results);
+    const { phq9Score, gad7Score } = results;
+    const hasSuicidalThoughts = results.phq9Answers[8] > 0;
+
+    // Determine risk level based on scores and self-harm answers
+    if (phq9Score > 19 || gad7Score > 14 || hasSuicidalThoughts) {
+      setCurrentScreen('crisis'); // High risk
+    } else if (phq9Score > 9 || gad7Score > 9) {
+      setCurrentScreen('results'); // Medium risk
+    } else {
+      setCurrentScreen('selfhelp'); // Low risk
+    }
+  };
+  
+  // A simple home dashboard screen
+  const HomeDashboard = () => (
+    <div className="p-8">
+      <h1 className="text-3xl font-bold mb-4">Home Dashboard</h1>
+      <p className="mb-4">Welcome to your safe space. From here you can access all the features of the app.</p>
+      <Button onClick={() => setCurrentScreen('assessment')}>Take Assessment</Button>
+    </div>
+  );
+
+
+  // Screen components mapping
+  const screens: { [key: string]: JSX.Element } = {
+    login: <LoginScreen
       onLogin={() => {
         setIsLoggedIn(true);
         setCurrentScreen('onboarding');
@@ -32,13 +59,13 @@ export default function App() {
       language={language}
       setLanguage={setLanguage}
     />,
-    onboarding: <OnboardingScreen onNext={() => setCurrentScreen('assessment')} language={language} setLanguage={setLanguage} />,
-    assessment: <AssessmentScreen onComplete={(results) => {
-      setAssessmentResults(results);
-      setCurrentScreen('results');
-    }} language={language} />,
-    results: <ResultsScreen 
-      results={assessmentResults} 
+    onboarding: <OnboardingScreen onNext={() => {
+      setConsentGiven(true);
+      setCurrentScreen('home');
+    }} language={language} setLanguage={setLanguage} />,
+    assessment: <AssessmentScreen onComplete={handleAssessmentComplete} language={language} />,
+    results: <ResultsScreen
+      results={assessmentResults}
       onSelfHelp={() => setCurrentScreen('selfhelp')}
       onBooking={() => setCurrentScreen('booking')}
       onChatbot={() => setCurrentScreen('chatbot')}
@@ -50,25 +77,30 @@ export default function App() {
     profile: <ProfileScreen language={language} setLanguage={setLanguage} />,
     peersupport: <PeerSupportScreen language={language} />,
     admin: <AdminDashboard />,
-    crisis: <CrisisScreen language={language} setLanguage={setLanguage} onBack={() => setCurrentScreen('onboarding')} />
+    crisis: <CrisisScreen language={language} setLanguage={setLanguage} onBack={() => setCurrentScreen('home')} />,
+    home: <HomeDashboard />
   };
 
   const navigationItems = [
-    { id: 'onboarding', label: 'Welcome', icon: Heart },
+    { id: 'home', label: 'Home', icon: Heart },
     { id: 'assessment', label: 'Assessment', icon: Brain },
-    { id: 'results', label: 'Results', icon: BarChart3 },
     { id: 'selfhelp', label: 'Resources', icon: BookOpen },
     { id: 'chatbot', label: 'Chat Support', icon: MessageCircle },
     { id: 'peersupport', label: 'Community', icon: Users },
     { id: 'booking', label: 'Book Session', icon: Calendar },
     { id: 'profile', label: 'Profile', icon: User },
-    { id: 'admin', label: 'Admin', icon: BarChart3 }
   ];
 
-  // Don't show navigation on login screen
-  if (currentScreen === 'login') {
-    return screens[currentScreen];
+  // If the user is not logged in, show the login screen
+  if (!isLoggedIn) {
+    return screens['login'];
   }
+  
+  // If the user is logged in but hasn't given consent, show the onboarding screen
+  if(isLoggedIn && !consentGiven){
+    return screens['onboarding'];
+  }
+
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #FDF2F8 0%, #ffffff 50%, #F0F9FF 100%)' }}>
@@ -82,16 +114,10 @@ export default function App() {
                 <Heart className="w-6 h-6 text-white" />
               </div>
               <h1 className="text-2xl font-bold text-gray-800">Mind Care</h1>
-              {isLoggedIn && (
-                <div className="hidden md:flex items-center space-x-2 ml-4">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600">Secure Session</span>
-                </div>
-              )}
             </div>
             
             <div className="hidden md:flex items-center space-x-1">
-              {navigationItems.slice(0, 7).map((item) => {
+              {navigationItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Button
@@ -126,30 +152,19 @@ export default function App() {
                 <span className="hidden md:inline">SOS</span>
               </Button>
               
-              {isLoggedIn ? (
-                <Button
-                  onClick={() => {
-                    setIsLoggedIn(false);
-                    setCurrentScreen('login');
-                  }}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center space-x-2 rounded-2xl font-medium border-gray-300 hover:bg-gray-50"
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span className="hidden md:inline">Logout</span>
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => setCurrentScreen('login')}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center space-x-2 rounded-2xl font-medium border-gray-300 hover:bg-gray-50"
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span className="hidden md:inline">Login</span>
-                </Button>
-              )}
+              <Button
+                onClick={() => {
+                  setIsLoggedIn(false);
+                  setConsentGiven(false);
+                  setCurrentScreen('login');
+                }}
+                variant="outline"
+                size="sm"
+                className="flex items-center space-x-2 rounded-2xl font-medium border-gray-300 hover:bg-gray-50"
+              >
+                <LogIn className="w-4 h-4" />
+                <span className="hidden md:inline">Logout</span>
+              </Button>
               
               <Button
                 variant="outline"
@@ -164,44 +179,6 @@ export default function App() {
           </div>
         </div>
       </nav>
-
-      {/* Mobile Navigation */}
-      <div className="md:hidden bg-white/95 backdrop-blur-sm border-t border-primary/10 fixed bottom-0 left-0 right-0 z-50 shadow-lg">
-        <div className="flex justify-around py-3">
-          {[navigationItems[0], navigationItems[2], navigationItems[6], navigationItems[7]].map((item) => {
-            const Icon = item.icon;
-            const isActive = currentScreen === item.id;
-            return (
-              <Button
-                key={item.id}
-                variant="ghost"
-                size="sm"
-                onClick={() => setCurrentScreen(item.id)}
-                className={`flex flex-col items-center space-y-1 h-auto py-2 px-3 rounded-2xl transition-all duration-200 ${
-                  isActive 
-                    ? 'text-white shadow-md' 
-                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
-                }`}
-                style={isActive ? {
-                  background: 'linear-gradient(135deg, #E4004B 0%, #FF6B9D 100%)'
-                } : {}}
-              >
-                <Icon className="w-5 h-5" />
-                <span className="text-xs font-medium">{item.label}</span>
-              </Button>
-            );
-          })}
-          <Button
-            size="sm"
-            onClick={() => setCurrentScreen('crisis')}
-            className="flex flex-col items-center space-y-1 h-auto py-2 px-3 rounded-2xl text-white shadow-md transition-all duration-200 hover:shadow-lg transform hover:scale-105"
-            style={{ background: 'linear-gradient(135deg, #FF6B6B 0%, #FF8A65 100%)' }}
-          >
-            <AlertTriangle className="w-5 h-5" />
-            <span className="text-xs font-medium">SOS</span>
-          </Button>
-        </div>
-      </div>
 
       {/* Main Content */}
       <main className="pb-20 md:pb-8">
