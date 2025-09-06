@@ -5,7 +5,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Separator } from './ui/separator';
+import { Alert, AlertDescription } from './ui/alert';
 import { 
   Heart, 
   Mail, 
@@ -15,7 +15,7 @@ import {
   Shield, 
   UserPlus, 
   Globe,
-  CheckCircle
+  AlertCircle
 } from 'lucide-react';
 
 interface LoginScreenProps {
@@ -56,6 +56,17 @@ const translations = {
     loginMethods: {
       email: "Email",
       phone: "Phone + OTP"
+    },
+    // New error messages
+    errors: {
+      invalidEmail: "Please enter a valid email address.",
+      passwordRequired: "Password is required.",
+      emailRequired: "Email address is required.",
+      nameRequired: "Full name is required.",
+      passwordMismatch: "Passwords do not match.",
+      passwordLength: "Password must be at least 6 characters.",
+      loginFailed: "Invalid credentials. Please try again.",
+      formError: "Please fix the errors before submitting."
     }
   },
   hi: {
@@ -89,12 +100,24 @@ const translations = {
     loginMethods: {
       email: "ईमेल",
       phone: "फोन + OTP"
+    },
+    // New error messages
+    errors: {
+      invalidEmail: "कृपया एक वैध ईमेल पता दर्ज करें।",
+      passwordRequired: "पासवर्ड आवश्यक है।",
+      emailRequired: "ईमेल पता आवश्यक है।",
+      nameRequired: "पूरा नाम आवश्यक है।",
+      passwordMismatch: "पासवर्ड मेल नहीं खाते।",
+      passwordLength: "पासवर्ड कम से कम 6 अक्षरों का होना चाहिए।",
+      loginFailed: "अमान्य क्रेडेंशियल। कृपया पुनः प्रयास करें।",
+      formError: "सबमिट करने से पहले कृपया त्रुटियों को ठीक करें।"
     }
   }
 };
 
 export default function LoginScreen({ onLogin, language, setLanguage }: LoginScreenProps) {
   const t = translations[language as keyof typeof translations];
+  const [activeTab, setActiveTab] = useState('login');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loginMethod, setLoginMethod] = useState('email');
@@ -108,23 +131,73 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
     institution: '',
     otp: ''
   });
+  // New state for form errors
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [generalError, setGeneralError] = useState<string | null>(null);
+
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear the error for the field being edited
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
   };
 
-  const handleSendOTP = () => {
-    // Mock OTP sending
-    setOtpSent(true);
+  const validateEmail = (email: string) => {
+    // A simple regex for email validation
+    return /\S+@\S+\.\S+/.test(email);
   };
 
   const handleLogin = () => {
-    // Mock login process
-    onLogin();
+    setErrors({});
+    setGeneralError(null);
+
+    // Basic Validation for Sign In
+    const newErrors: { [key: string]: string } = {};
+    if (!formData.email) newErrors.email = t.errors.emailRequired;
+    if (!validateEmail(formData.email)) newErrors.email = t.errors.invalidEmail;
+    if (!formData.password) newErrors.password = t.errors.passwordRequired;
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    // Simulate server check for incorrect credentials
+    if (formData.email === "user@example.com" && formData.password === "password123") {
+      onLogin();
+    } else {
+      setGeneralError(t.errors.loginFailed);
+    }
   };
 
   const handleRegister = () => {
-    // Mock registration process
+    setErrors({});
+    setGeneralError(null);
+
+    // Validation for Create Account
+    const newErrors: { [key: string]: string } = {};
+    if (!formData.fullName.trim()) newErrors.fullName = t.errors.nameRequired;
+    if (!formData.email) {
+      newErrors.email = t.errors.emailRequired;
+    } else if (!validateEmail(formData.email)) {
+      newErrors.email = t.errors.invalidEmail;
+    }
+    if (formData.password.length < 6) {
+      newErrors.password = t.errors.passwordLength;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = t.errors.passwordMismatch;
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setGeneralError(t.errors.formError);
+      return;
+    }
+
+    // If validation passes, proceed to login/dashboard
     onLogin();
   };
 
@@ -132,7 +205,6 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
     <div className="min-h-screen flex items-center justify-center p-4" 
          style={{ background: 'linear-gradient(135deg, #FDF2F8 0%, #F0F9FF 100%)' }}>
       
-      {/* Language Toggle */}
       <div className="absolute top-6 right-6">
         <Select value={language} onValueChange={setLanguage}>
           <SelectTrigger className="w-40 rounded-2xl border-white/50 bg-white/80 backdrop-blur-sm">
@@ -147,7 +219,6 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
       </div>
 
       <div className="w-full max-w-md space-y-8">
-        {/* Header */}
         <div className="text-center space-y-4">
           <div className="flex justify-center">
             <div className="w-20 h-20 rounded-3xl flex items-center justify-center shadow-xl"
@@ -157,19 +228,12 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
           </div>
           
           <div className="space-y-3">
-            <h1 className="text-4xl font-semibold text-gray-800">
-              {t.welcome}
-            </h1>
-            <p className="text-xl text-gray-600">
-              {t.subtitle}
-            </p>
-            <p className="text-gray-500 max-w-sm mx-auto">
-              {t.description}
-            </p>
+            <h1 className="text-4xl font-semibold text-gray-800">{t.welcome}</h1>
+            <p className="text-xl text-gray-600">{t.subtitle}</p>
+            <p className="text-gray-500 max-w-sm mx-auto">{t.description}</p>
           </div>
         </div>
 
-        {/* Features Pills */}
         <div className="flex justify-center space-x-2">
           {Object.values(t.features).map((feature, index) => (
             <div key={index} className="px-4 py-2 bg-white/70 backdrop-blur-sm rounded-full text-sm font-medium text-gray-700 border border-white/50">
@@ -178,22 +242,22 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
           ))}
         </div>
 
-        {/* Auth Card */}
         <Card className="rounded-3xl shadow-2xl border-white/50 bg-white/90 backdrop-blur-sm">
           <CardContent className="p-8">
-            <Tabs defaultValue="login" className="space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
               <TabsList className="grid w-full grid-cols-2 rounded-2xl bg-gray-100/80">
-                <TabsTrigger value="login" className="rounded-2xl font-medium">
-                  {t.login}
-                </TabsTrigger>
-                <TabsTrigger value="register" className="rounded-2xl font-medium">
-                  {t.register}
-                </TabsTrigger>
+                <TabsTrigger value="login" className="rounded-2xl font-medium">{t.login}</TabsTrigger>
+                <TabsTrigger value="register" className="rounded-2xl font-medium">{t.register}</TabsTrigger>
               </TabsList>
 
-              {/* Login Tab */}
               <TabsContent value="login" className="space-y-6">
-                {/* Login Method Selection */}
+                {generalError && activeTab === 'login' && (
+                  <Alert variant="destructive" className="rounded-2xl">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{generalError}</AlertDescription>
+                  </Alert>
+                )}
+                
                 <div className="grid grid-cols-2 gap-3">
                   <Button
                     variant={loginMethod === 'email' ? 'default' : 'outline'}
@@ -214,89 +278,47 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
                 </div>
 
                 <div className="space-y-4">
-                  {loginMethod === 'email' ? (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="login-email">{t.email}</Label>
-                        <Input
-                          id="login-email"
-                          type="email"
-                          placeholder="student@university.edu"
-                          value={formData.email}
-                          onChange={(e) => handleInputChange('email', e.target.value)}
-                          className="rounded-2xl border-gray-200 bg-gray-50/50"
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="login-password">{t.password}</Label>
-                        <div className="relative">
-                          <Input
-                            id="login-password"
-                            type={showPassword ? 'text' : 'password'}
-                            placeholder="••••••••"
-                            value={formData.password}
-                            onChange={(e) => handleInputChange('password', e.target.value)}
-                            className="rounded-2xl border-gray-200 bg-gray-50/50 pr-12"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-xl"
-                          >
-                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </Button>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="login-phone">{t.phone}</Label>
-                        <Input
-                          id="login-phone"
-                          type="tel"
-                          placeholder="+91 98765 43210"
-                          value={formData.phone}
-                          onChange={(e) => handleInputChange('phone', e.target.value)}
-                          className="rounded-2xl border-gray-200 bg-gray-50/50"
-                        />
-                      </div>
-
-                      {!otpSent ? (
-                        <Button
-                          onClick={handleSendOTP}
-                          className="w-full rounded-2xl font-medium"
-                          style={{ background: 'linear-gradient(135deg, #FF6B6B 0%, #FF8A65 100%)' }}
-                        >
-                          {t.sendOtp}
-                        </Button>
-                      ) : (
-                        <div className="space-y-2">
-                          <Label htmlFor="otp">{t.enterOtp}</Label>
-                          <Input
-                            id="otp"
-                            placeholder="123456"
-                            value={formData.otp}
-                            onChange={(e) => handleInputChange('otp', e.target.value)}
-                            className="rounded-2xl border-gray-200 bg-gray-50/50 text-center text-2xl tracking-widest"
-                            maxLength={6}
-                          />
-                        </div>
-                      )}
-                    </>
-                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email">{t.email}</Label>
+                    <Input
+                      id="login-email"
+                      type="email"
+                      placeholder="student@university.edu"
+                      value={formData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      className="rounded-2xl border-gray-200 bg-gray-50/50"
+                    />
+                    {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">{t.password}</Label>
+                    <div className="relative">
+                      <Input
+                        id="login-password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={formData.password}
+                        onChange={(e) => handleInputChange('password', e.target.value)}
+                        className="rounded-2xl border-gray-200 bg-gray-50/50 pr-12"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-xl"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                    {errors.password && <p className="text-xs text-red-600 mt-1">{errors.password}</p>}
+                  </div>
                 </div>
 
-                {loginMethod === 'email' && (
-                  <div className="text-right">
-                    <Button variant="link" className="text-primary p-0 h-auto font-medium">
-                      {t.forgotPassword}
-                    </Button>
-                  </div>
-                )}
+                <div className="text-right">
+                  <Button variant="link" className="text-primary p-0 h-auto font-medium">{t.forgotPassword}</Button>
+                </div>
 
                 <Button
                   onClick={handleLogin}
@@ -307,8 +329,14 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
                 </Button>
               </TabsContent>
 
-              {/* Register Tab */}
               <TabsContent value="register" className="space-y-6">
+                {generalError && activeTab === 'register' && (
+                  <Alert variant="destructive" className="rounded-2xl">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{generalError}</AlertDescription>
+                  </Alert>
+                )}
+                
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="register-name">{t.fullName}</Label>
@@ -319,6 +347,7 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
                       onChange={(e) => handleInputChange('fullName', e.target.value)}
                       className="rounded-2xl border-gray-200 bg-gray-50/50"
                     />
+                    {errors.fullName && <p className="text-xs text-red-600 mt-1">{errors.fullName}</p>}
                   </div>
 
                   <div className="space-y-2">
@@ -331,17 +360,7 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
                       onChange={(e) => handleInputChange('email', e.target.value)}
                       className="rounded-2xl border-gray-200 bg-gray-50/50"
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="register-institution">{t.institution}</Label>
-                    <Input
-                      id="register-institution"
-                      placeholder="University Name"
-                      value={formData.institution}
-                      onChange={(e) => handleInputChange('institution', e.target.value)}
-                      className="rounded-2xl border-gray-200 bg-gray-50/50"
-                    />
+                    {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
                   </div>
 
                   <div className="space-y-2">
@@ -365,6 +384,7 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </Button>
                     </div>
+                    {errors.password && <p className="text-xs text-red-600 mt-1">{errors.password}</p>}
                   </div>
 
                   <div className="space-y-2">
@@ -388,15 +408,14 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
                         {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </Button>
                     </div>
+                    {errors.confirmPassword && <p className="text-xs text-red-600 mt-1">{errors.confirmPassword}</p>}
                   </div>
                 </div>
 
                 <div className="bg-blue-50/50 p-4 rounded-2xl">
                   <div className="flex items-start space-x-3">
                     <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
-                    <p className="text-sm text-blue-800 leading-relaxed">
-                      {t.privacyNotice}
-                    </p>
+                    <p className="text-sm text-blue-800 leading-relaxed">{t.privacyNotice}</p>
                   </div>
                 </div>
 
@@ -413,7 +432,6 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
           </CardContent>
         </Card>
 
-        {/* Security Notice */}
         <div className="text-center">
           <p className="text-sm text-gray-600 flex items-center justify-center space-x-2">
             <Shield className="w-4 h-4" />
