@@ -37,7 +37,7 @@ import {
 
 interface BookingScreenProps {
   language: string;
-  setLanguage?: (lang: string) => void;
+  setLanguage: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const translations = {

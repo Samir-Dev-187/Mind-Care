@@ -7,7 +7,7 @@ import { Shield, Heart, Users, Globe, Lock, CheckCircle } from 'lucide-react';
 interface OnboardingScreenProps {
   onNext: () => void;
   language: string;
-  setLanguage: (lang: string) => void;
+  setLanguage: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const translations = {
