@@ -6,14 +6,14 @@ import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Alert, AlertDescription } from './ui/alert';
-import { 
-  Heart, 
-  Mail, 
-  Phone, 
-  Eye, 
-  EyeOff, 
-  Shield, 
-  UserPlus, 
+import {
+  Heart,
+  Mail,
+  Phone,
+  Eye,
+  EyeOff,
+  Shield,
+  UserPlus,
   Globe,
   AlertCircle
 } from 'lucide-react';
@@ -57,7 +57,6 @@ const translations = {
       email: "Email",
       phone: "Phone + OTP"
     },
-    // New error messages
     errors: {
       invalidEmail: "Please enter a valid email address.",
       passwordRequired: "Password is required.",
@@ -101,7 +100,6 @@ const translations = {
       email: "ईमेल",
       phone: "फोन + OTP"
     },
-    // New error messages
     errors: {
       invalidEmail: "कृपया एक वैध ईमेल पता दर्ज करें।",
       passwordRequired: "पासवर्ड आवश्यक है।",
@@ -131,32 +129,28 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
     institution: '',
     otp: ''
   });
-  // New state for form errors
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
 
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear the error for the field being edited
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
 
   const validateEmail = (email: string) => {
-    // A simple regex for email validation
     return /\S+@\S+\.\S+/.test(email);
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setErrors({});
     setGeneralError(null);
 
-    // Basic Validation for Sign In
     const newErrors: { [key: string]: string } = {};
     if (!formData.email) newErrors.email = t.errors.emailRequired;
-    if (!validateEmail(formData.email)) newErrors.email = t.errors.invalidEmail;
+    else if (!validateEmail(formData.email)) newErrors.email = t.errors.invalidEmail;
     if (!formData.password) newErrors.password = t.errors.passwordRequired;
 
     if (Object.keys(newErrors).length > 0) {
@@ -164,19 +158,29 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
       return;
     }
 
-    // Simulate server check for incorrect credentials
-    if (formData.email === "user@example.com" && formData.password === "password123") {
-      onLogin();
-    } else {
-      setGeneralError(t.errors.loginFailed);
+    try {
+        const response = await fetch('http://localhost:5000/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: formData.email, password: formData.password })
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Login failed');
+        }
+
+        onLogin();
+
+    } catch (error: any) {
+        setGeneralError(error.message);
     }
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     setErrors({});
     setGeneralError(null);
 
-    // Validation for Create Account
     const newErrors: { [key: string]: string } = {};
     if (!formData.fullName.trim()) newErrors.fullName = t.errors.nameRequired;
     if (!formData.email) {
@@ -197,14 +201,35 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
       return;
     }
 
-    // If validation passes, proceed to login/dashboard
-    onLogin();
+    try {
+        const response = await fetch('http://localhost:5000/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                fullName: formData.fullName,
+                email: formData.email,
+                password: formData.password
+            })
+        });
+
+        if (!response.ok) {
+             const data = await response.json();
+            throw new Error(data.error || 'Registration failed');
+        }
+        
+        // If registration is successful, automatically log the user in or redirect to the login tab
+        alert("Registration successful! Please sign in.");
+        setActiveTab('login');
+
+    } catch (error: any) {
+        setGeneralError(error.message);
+    }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" 
+    <div className="min-h-screen flex items-center justify-center p-4"
          style={{ background: 'linear-gradient(135deg, #FDF2F8 0%, #F0F9FF 100%)' }}>
-      
+
       <div className="absolute top-6 right-6">
         <Select value={language} onValueChange={setLanguage}>
           <SelectTrigger className="w-40 rounded-2xl border-white/50 bg-white/80 backdrop-blur-sm">
@@ -226,7 +251,7 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
               <Heart className="w-10 h-10 text-white" />
             </div>
           </div>
-          
+
           <div className="space-y-3">
             <h1 className="text-4xl font-semibold text-gray-800">{t.welcome}</h1>
             <p className="text-xl text-gray-600">{t.subtitle}</p>
@@ -257,7 +282,7 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
                     <AlertDescription>{generalError}</AlertDescription>
                   </Alert>
                 )}
-                
+
                 <div className="grid grid-cols-2 gap-3">
                   <Button
                     variant={loginMethod === 'email' ? 'default' : 'outline'}
@@ -290,7 +315,7 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
                     />
                     {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="login-password">{t.password}</Label>
                     <div className="relative">
@@ -336,7 +361,7 @@ export default function LoginScreen({ onLogin, language, setLanguage }: LoginScr
                     <AlertDescription>{generalError}</AlertDescription>
                   </Alert>
                 )}
-                
+
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="register-name">{t.fullName}</Label>
